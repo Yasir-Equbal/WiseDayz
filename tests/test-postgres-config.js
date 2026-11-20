@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const sql=fs.readFileSync(path.join(__dirname,'..','migrations','001_initial.sql'),'utf8');
+for(const table of ['users','sessions','workspaces'])assert.match(sql,new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
+assert.match(sql,/email VARCHAR\(254\) NOT NULL UNIQUE/);
+assert.match(sql,/REFERENCES users\(id\) ON DELETE CASCADE/);
+assert.match(sql,/data JSONB/);
+assert.match(sql,/version BIGINT NOT NULL DEFAULT 1/);
+assert.match(sql,/sessions_expiry_idx/);
+const {readDb}=require('../server');assert.equal(typeof readDb,'function');
+console.log('PostgreSQL migration/config tests: 7 checks passed');

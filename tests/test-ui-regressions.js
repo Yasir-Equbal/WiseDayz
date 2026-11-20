@@ -1,0 +1,12 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const app = fs.readFileSync(new URL('../app.js', `file://${__filename}`), 'utf8');
+const css = fs.readFileSync(new URL('../styles.css', `file://${__filename}`), 'utf8');
+assert.match(app, /if\(route==='focus'\)\{render\(\)\}else\{go\('focus'\)\}/, 'focus mode changes must rerender when already on Focus Studio');
+assert.match(app, /data-action="prepare-schedule"/, 'Prepare schedule action must be available in UI');
+assert.match(app, /Before wake-up/, 'Prepare schedule must expose before-wake preference');
+assert.match(app, /After wake-up/, 'Prepare schedule must expose after-wake preference');
+assert.match(app, /data-action="build-prepared-schedule"/, 'Prepare schedule must build a proposal');
+assert.match(css, /\.sidebar\{[^}]*overflow-y:auto/s, 'sidebar must scroll vertically');
+assert.match(css, /\.focus-mode-active/, 'selected focus mode must have a visible active state');
+console.log('UI regression checks: 7 checks passed');

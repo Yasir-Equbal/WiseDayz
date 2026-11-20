@@ -1,0 +1,15 @@
+const fs=require('fs'),vm=require('vm'),path=require('path');
+const src=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
+const a=src.indexOf('function expandRecurringDates'),b=src.indexOf('function saveTaskFromForm');
+if(a<0||b<0)throw Error('Recurring helper not found');
+const ctx={state:{routines:[{id:'weekday',days:[1,2,3,4,5]},{id:'weekend',days:[0,6]}]},addDays:(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}};
+vm.createContext(ctx);vm.runInContext(src.slice(a,b),ctx);
+const daily=vm.runInContext("expandRecurringDates('2026-11-18','daily','weekday','2026-11-21')",ctx);
+if(daily.length!==3||daily.some(d=>new Date(d+'T12:00:00').getDay()===0||new Date(d+'T12:00:00').getDay()===6))throw Error('Daily recurrence did not respect routine weekdays/deadline');
+const weekly=vm.runInContext("expandRecurringDates('2026-11-18','weekly',null,'2026-12-31')",ctx);
+if(weekly.length!==4||new Set(weekly).size!==4)throw Error('Weekly recurrence should create four unique occurrences');
+const weekends=vm.runInContext("expandRecurringDates('2026-11-18','daily','weekend','2026-11-23')",ctx);
+if(weekends.length!==2||weekends.some(d=>![0,6].includes(new Date(d+'T12:00:00').getDay())))throw Error('Routine day filtering failed');
+const none=vm.runInContext("expandRecurringDates('2026-11-18','daily','weekday','2026-11-18')",ctx);
+if(none.length!==1)throw Error('Deadline boundary should include the deadline date');
+console.log(JSON.stringify({checks:['daily recurrence respects routine days','weekly recurrence creates unique occurrences','routine weekday filtering works','deadline bounds recurring dates','duplicate dates removed'],examples:{daily,weekly,weekends,none}},null,2));

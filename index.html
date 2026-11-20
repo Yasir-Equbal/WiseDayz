@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#101b2d" />
+  <title>wisedayZ — Smart Scheduler</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml"
+      href="assets/wisedayz-icon.svg">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#home"><span class="brand-mark">✳</span><span>wisedayZ<span class="brand-dot">.</span><small>PLAN WITH INTENTION</small></span></a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-group" aria-label="Main navigation">
+        <a href="#home" data-route="home"><span>⌂</span>Overview</a>
+        <a href="#daily" data-route="daily"><span>◷</span>Today</a>
+        <a href="#weekly" data-route="weekly"><span>▦</span>Weekly planner</a>
+        <a href="#monthly" data-route="monthly"><span>▦</span>Monthly planner</a>
+        <a href="#routines" data-route="routines"><span>⟳</span>My routines</a>
+      </nav>
+      <div class="workspace-label nav-spacer">MANAGE</div>
+      <nav class="nav-group" aria-label="Task navigation">
+        <a href="#tasks" data-route="tasks"><span>☷</span>All tasks</a>
+        <a href="#incomplete" data-route="incomplete"><span>◌</span>Incomplete <b class="nav-count" id="incomplete-count">0</b></a>
+        <a href="#completed" data-route="completed"><span>✓</span>Completed</a>
+        <a href="#assistant" data-route="assistant"><span>⌘</span>Planning helper</a>
+      </nav>
+      <div class="workspace-label nav-spacer">FOCUS & INSIGHTS</div>
+      <nav class="nav-group">
+        <a href="#focus" data-route="focus"><span>◉</span>Focus studio</a>
+        <a href="#habits" data-route="habits"><span>♧</span>Habits</a>
+        <a href="#insights" data-route="insights"><span>▥</span>Insights</a>
+        <a href="#history" data-route="history"><span>↺</span>Activity history</a>
+        <a href="#notifications" data-route="notifications"><span>♧</span>Notifications</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="upgrade-card"><div class="upgrade-icon">✦</div><strong>Your day, your pace.</strong><p>Small steps. Consistent progress.</p><span class="upgrade-line"><i></i></span></div>
+        <a href="#settings" class="profile-link"><span class="avatar">Y</span><span><strong id="sidebar-name">Yasir</strong><small>Personal workspace</small></span><span class="profile-more">···</span></a>
+      </div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar">
+        <button class="icon-btn mobile-menu" id="menu-toggle" aria-label="Open menu">☰</button>
+        <div class="breadcrumbs"><span>Workspace</span><b>/</b><strong id="page-crumb">Overview</strong></div>
+        <div class="top-actions"><div class="today-chip" id="top-date"></div><span id="cloud-status" class="cloud-status" title="Cloud sync status">Offline</span><button class="btn btn-small" id="account-button" data-action="open-account">Sign in</button><button class="icon-btn" id="quick-search" title="Search tasks">⌕</button><button class="icon-btn notification-btn" id="notification-button" title="Notifications" aria-label="Open notifications">♧<i></i></button><button class="avatar avatar-small" id="profile-shortcut" title="Profile">Y</button></div>
+      </header>
+      <section id="view" class="page-content" aria-live="polite"></section>
+    </main>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root"></div>
+  <div id="account-root"></div>
+  <script src="app.js"></script>
+</body>
+</html>
