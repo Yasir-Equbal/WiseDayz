@@ -9,7 +9,8 @@
     "test": "node --check app.js && node --check server.js && node --check main.js && node tests/test-scheduler.js && node tests/test-notifications.js && node tests/test-recurring.js && node tests/test-hardening.js && node tests/test-api.js && node tests/test-postgres-config.js && node tests/test-cookie-security.js && node tests/test-ui-regressions.js && node tests/test-ai-assistant.js && node tests/test-desktop.js",
     "start:desktop": "electron .",
     "dist:win": "electron-builder --win nsis",
-    "dist:win:portable": "electron-builder --win portable"
+    "dist:win:portable": "electron-builder --win portable",
+    "dist:win:publish": "electron-builder --win nsis --publish always"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -55,7 +56,15 @@
       "installerIcon": "assets/wisedayz.ico",
       "uninstallerIcon": "assets/wisedayz.ico",
       "shortcutName": "wisedayZ"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Yasir-Equbal",
+        "repo": "WiseDayz",
+        "releaseType": "release"
+      }
+    ]
   },
   "allowScripts": {
     "electron-winstaller@5.4.0": true
