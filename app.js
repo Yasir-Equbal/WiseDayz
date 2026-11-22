@@ -25,15 +25,74 @@ const defaultState=()=>{
  {id:uid(),title:'Read a book',date:y,start:'20:00',duration:30,remaining:20,priority:'low',category:'Personal',status:'partial',fixed:false,routineId:'r-college',actual:10,createdAt:Date.now()-80000},
  {id:uid(),title:'Complete project documentation',date:tmr,start:'19:00',duration:60,remaining:60,priority:'high',category:'Project',status:'pending',fixed:false,routineId:'r-college',actual:0,createdAt:Date.now()}
  ];
- return {user:{name:'Yasir',email:'yasir@example.com',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone},preferences:{wake:'06:00',sleep:'22:30',notifications:true,approval:true,quiet:true,theme:'light',defaultDuration:60},routines,tasks,history:[],proposals:[],habits:[{id:uid(),name:'Read for 20 minutes',days:[1,2,3,4,5,6,0],done:[]},{id:uid(),name:'Daily revision',days:[1,2,3,4,5,6],done:[]},{id:uid(),name:'Exercise',days:[1,3,5,6],done:[]}],notifications:[],wakeRecords:{},focusSessions:[],activeRoutine:'r-college',onboarded:true};
+ return {user:{name:'Yasir',email:'yasir@example.com',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone},preferences:{wake:'06:00',sleep:'22:30',notifications:true,approval:true,quiet:true,theme:'light',defaultDuration:60,focusMinutes:25,breakMinutes:5,timerMinutes:15},routines,tasks,history:[],proposals:[],habits:[{id:uid(),name:'Read for 20 minutes',days:[1,2,3,4,5,6,0],done:[]},{id:uid(),name:'Daily revision',days:[1,2,3,4,5,6],done:[]},{id:uid(),name:'Exercise',days:[1,3,5,6],done:[]}],notifications:[],wakeRecords:{},focusSessions:[],activeRoutine:'r-college',onboarded:true};
 };
 let state;try{state=JSON.parse(localStorage.getItem(STORE))||defaultState()}catch{state=defaultState()}
 // Lightweight schema migration keeps older v1/v2 browser data usable.
 state.notifications ||= []; state.preferences ||= {}; state.preferences.notifications ??= true;
+state.preferences.focusMinutes ??= 25;
+state.preferences.breakMinutes ??= 5;
+state.preferences.timerMinutes ??= 15;
 // v5 schema migration: dependency and recurring-series metadata are optional in older backups.
 state.tasks ||= []; state.routines ||= []; state.history ||= [];
 state.tasks.forEach(t=>{t.dependsOn ||= null; t.seriesId ??= null; t.actual ??= 0; t.remaining ??= Math.max(0,(t.duration||0)-t.actual);});
 state.schemaVersion=6;
+
+function applyTheme(theme = state.preferences?.theme || 'light') {
+ const dark = theme === 'dark';
+ document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+ document.body?.classList.toggle('dark-mode', dark);
+ const meta = document.querySelector('meta[name="theme-color"]');
+ if (meta) meta.setAttribute('content', dark ? '#0b1220' : '#101b2d');
+ const btn = $('#theme-toggle');
+ if (btn) {
+  btn.textContent = dark ? '☀' : '☾';
+  btn.title = dark ? 'Switch to light mode' : 'Switch to night mode';
+  btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to night mode');
+ }
+ if (!document.getElementById('wisedayz-dark-theme-style')) {
+  const style = document.createElement('style');
+  style.id = 'wisedayz-dark-theme-style';
+  style.textContent = `
+   body.dark-mode { background: #0b1220 !important; color: #e2e8f0 !important; }
+   body.dark-mode .main-area, body.dark-mode .page-content { background: #0b1220 !important; color: #e2e8f0 !important; }
+   body.dark-mode .topbar { background: #0f172a !important; border-bottom-color: #1e293b !important; color: #e2e8f0 !important; }
+   body.dark-mode .card, body.dark-mode .stat-card, body.dark-mode .routine-card, body.dark-mode .focus-timer, body.dark-mode .modal, body.dark-mode .account-panel { background: #111c30 !important; border-color: #1e293b !important; color: #e2e8f0 !important; box-shadow: 0 10px 28px rgba(0,0,0,0.35) !important; }
+   body.dark-mode .wake-card { background: linear-gradient(145deg, #13233c, #0f1a2e) !important; border-color: #243654 !important; color: #e2e8f0 !important; }
+   body.dark-mode .callout { background: #132238 !important; border-color: #253a5a !important; color: #cbd5e1 !important; }
+   body.dark-mode .today-chip, body.dark-mode .tag, body.dark-mode .icon-btn, body.dark-mode .mini-icon, body.dark-mode .btn:not(.btn-primary):not(.btn-danger):not(.btn-soft) { background: #18263e !important; border-color: #2a3d5c !important; color: #e2e8f0 !important; }
+   body.dark-mode .btn-soft { background: rgba(88, 187, 168, 0.16) !important; color: #7ce0cc !important; border-color: rgba(88, 187, 168, 0.35) !important; }
+   body.dark-mode .input, body.dark-mode .select, body.dark-mode .textarea { background: #0d1627 !important; border-color: #293b59 !important; color: #f1f5f9 !important; }
+   body.dark-mode .task-table th { background: #152238 !important; color: #94a3b8 !important; border-bottom-color: #1e293b !important; }
+   body.dark-mode .task-table td, body.dark-mode .schedule-row, body.dark-mode .routine-mini, body.dark-mode .habit-row, body.dark-mode .history-row, body.dark-mode .settings-row, body.dark-mode .proposal-item, body.dark-mode .prepare-task-row, body.dark-mode .modal-head, body.dark-mode .modal-foot { border-color: #1e293b !important; }
+   body.dark-mode .history-row { background: transparent !important; color: #cbd5e1 !important; opacity: 0.78; transition: background 0.15s ease, opacity 0.15s ease; }
+   body.dark-mode .history-row strong { color: #cbd5e1 !important; }
+   body.dark-mode .history-row small, body.dark-mode .history-row time { color: #94a3b8 !important; }
+   body.dark-mode .history-row.notification-unread { background: #162640 !important; border-color: #2b456e !important; border-left: 3px solid #58bba8 !important; opacity: 1 !important; }
+   body.dark-mode .history-row.notification-unread strong { color: #f8fafc !important; }
+   body.dark-mode .history-row.notification-unread small, body.dark-mode .history-row.notification-unread time { color: #cbd5e1 !important; }
+   body.dark-mode .history-icon { background: #182944 !important; border-color: #2a3f63 !important; color: #7ce0cc !important; }
+   body.dark-mode .history-row.notification-unread .history-icon { background: rgba(88, 187, 168, 0.18) !important; border-color: rgba(88, 187, 168, 0.4) !important; color: #7ce0cc !important; }
+   body.dark-mode .day-column, body.dark-mode .calendar-day { background: #111c30 !important; border-color: #1e293b !important; color: #e2e8f0 !important; }
+   body.dark-mode .day-task { background: #182742 !important; color: #e2e8f0 !important; }
+   body.dark-mode .tool-tile { background: #16243b !important; border-color: #263957 !important; color: #e2e8f0 !important; }
+   body.dark-mode .chat-ai { background: #16243b !important; color: #e2e8f0 !important; }
+   body.dark-mode .muted, body.dark-mode .card-subtitle, body.dark-mode .task-meta, body.dark-mode .stat-foot, body.dark-mode .eyebrow, body.dark-mode .breadcrumbs span { color: #94a3b8 !important; }
+   body.dark-mode .progress-track { background: #1e293b !important; }
+   body.dark-mode .divider { background: #1e293b !important; }
+  `;
+  document.head.appendChild(style);
+ }
+}
+function toggleTheme() {
+ state.preferences.theme = state.preferences?.theme === 'dark' ? 'light' : 'dark';
+ applyTheme(state.preferences.theme);
+ save();
+ const btn = $('#settings-theme-btn');
+ if (btn) btn.textContent = state.preferences.theme === 'dark' ? '☀ Switch to light mode' : '☾ Switch to night mode';
+ toast(state.preferences.theme === 'dark' ? 'Night mode enabled' : 'Light mode enabled');
+}
+
 function save(){localStorage.setItem(STORE,JSON.stringify(state));updateBadges();scheduleCloudSync()}
 function log(type,task,detail=''){state.history.unshift({id:uid(),type,taskId:task?.id||null,title:task?.title||'Schedule',detail,at:Date.now()});save()}
 function pushNotification(title,message,type='info',key=''){
@@ -86,7 +145,7 @@ function showSyncConflict(){
 }
 async function restoreCloudWorkspace(){
  try{setCloudStatus('Loading cloud…','syncing');const ws=await apiRequest('/api/workspace');cloudVersion=ws.version||0;
-  if(ws.data){validateBackup(ws.data);state=migrateImportedState(ws.data);localStorage.setItem(STORE,JSON.stringify(state));updateBadges();render();}
+  if(ws.data){validateBackup(ws.data);state=migrateImportedState(ws.data);localStorage.setItem(STORE,JSON.stringify(state));applyTheme();updateBadges();render();}
   else{syncPending=true;await flushCloudSync();}localStorage.removeItem(QUEUE_KEY);
   $('#account-root').innerHTML='';setCloudStatus('Synced','online');toast(ws.data?'Cloud workspace loaded':'Workspace uploaded to cloud','success');
  }catch(err){setCloudStatus('Restore failed','error');const e=$('#account-error');if(e)e.textContent=err.message;else toast(err.message,'error')}
@@ -130,19 +189,117 @@ function monthly(){const base=new Date();base.setDate(1);base.setMonth(base.getM
 function routines(){return `${heading('My routines','Create different schedules for the different seasons of your life.',button('＋ Create routine','add-routine','btn btn-primary'))}<div class="grid three-col">${state.routines.map(r=>`<div class="card routine-card"><div class="routine-card-top"><span class="routine-symbol">${r.color==='blue'?'◈':r.color==='amber'?'☼':'⟳'}</span>${r.id===state.activeRoutine?'<span class="tag teal">Active routine</span>':'<span class="tag">Inactive</span>'}</div><h3>${esc(r.name)}</h3><p>${esc(r.description||'No description')}</p><div class="routine-meta"><span>☀ ${fmtTime(r.wake)}</span><span>☾ ${fmtTime(r.sleep)}</span></div><div class="routine-meta">${r.days.map(x=>['Su','Mo','Tu','We','Th','Fr','Sa'][x]).join(' · ')} · ${state.tasks.filter(t=>t.routineId===r.id).length} tasks</div><div class="routine-actions">${r.id!==state.activeRoutine?button('Activate','activate-routine','btn btn-small btn-soft','data-id="'+r.id+'"'):button('Active','routine-active','btn btn-small','disabled')}${button('Edit','edit-routine','btn btn-small','data-id="'+r.id+'"')}${button('···','routine-menu','btn btn-small','data-id="'+r.id+'"')}</div></div>`).join('')}</div>`}
 function tasksPage(filter){let list=state.tasks.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));if(filter==='incomplete')list=list.filter(t=>['incomplete','partial'].includes(t.status));if(filter==='completed')list=list.filter(t=>t.status==='completed');return `${heading(filter==='incomplete'?'Incomplete tasks':filter==='completed'?'Completed tasks':'All tasks',filter==='incomplete'?'Unfinished work is kept safe and given another chance.':filter==='completed'?'A record of the work you have finished.':'One place for every task and scheduled occurrence.',button('＋ Add task','add-task','btn btn-primary'))}<div class="toolbar"><input class="input" id="task-search" style="max-width:250px" placeholder="Search tasks…"><select class="select" id="task-filter" style="max-width:160px"><option value="all">All statuses</option><option value="pending">Upcoming</option><option value="progress">In progress</option><option value="partial">Partially done</option><option value="incomplete">Incomplete</option><option value="completed">Completed</option><option value="skipped">Skipped</option></select><select class="select" id="task-sort" style="max-width:150px"><option value="date">Sort by date</option><option value="priority">Sort by priority</option><option value="title">Sort by title</option></select></div><div class="card card-pad" id="task-table-container">${taskTable(list)}</div>`}
 function assistant(){return `${heading('Planning helper','Use simple planning commands and wisedayZ’s built-in scheduling rules.',`<span class="tag teal">Approval required for schedule changes</span>`)}<div class="card card-pad"><div class="assistant-thread" id="chat-thread"><div class="chat-bubble chat-ai"><div class="chat-label">DAYWISE PLANNING HELPER</div>Hello ${esc(state.user.name)}. I use local rules to help you review your day, find incomplete tasks and prepare schedule proposals. No external AI service is used. I will always show you a proposal before changing your schedule.</div><div class="chat-bubble chat-user">I woke up later than planned. Prepare a new schedule.</div><div class="chat-bubble chat-ai"><div class="chat-label">DAYWISE PLANNING HELPER</div>Use Prepare today’s schedule to review your tasks and choose before wake-up, after wake-up or flexible. Nothing changes until you approve the proposal.</div></div><div class="chat-compose"><input class="input" id="chat-input" placeholder="Try: prepare my schedule, show incomplete tasks, or review my day…"><button class="btn btn-primary" data-action="send-chat">Send ↗</button></div><div class="toolbar" style="margin-top:13px"><button class="btn btn-small btn-soft" data-action="prepare-schedule">✧ Prepare today's schedule</button><button class="btn btn-small" data-action="reschedule">Review schedule changes</button><button class="btn btn-small" data-action="show-incomplete">Show incomplete tasks</button><button class="btn btn-small" data-action="daily-report">Review my day</button></div></div>`}
-let focusMode='pomodoro',focusSeconds=25*60,focusRunning=false,focusInterval=null,focusTaskId='';
-function focusPage(){return `${heading('Focus studio','A quiet space for focused work, timed sessions and breaks.',`<span class="tag teal">Your focus, your pace</span>`)}<div class="grid two-col"><div class="card focus-timer"><div class="toolbar" style="justify-content:center"><button class="btn btn-small ${focusMode==='pomodoro'?'btn-soft focus-mode-active':''}" aria-pressed="${focusMode==='pomodoro'}" data-action="set-focus-mode" data-mode="pomodoro">Pomodoro</button><button class="btn btn-small ${focusMode==='stopwatch'?'btn-soft focus-mode-active':''}" aria-pressed="${focusMode==='stopwatch'}" data-action="set-focus-mode" data-mode="stopwatch">Stopwatch</button><button class="btn btn-small ${focusMode==='timer'?'btn-soft focus-mode-active':''}" aria-pressed="${focusMode==='timer'}" data-action="set-focus-mode" data-mode="timer">Timer</button></div><div class="timer-ring"><div><strong id="focus-clock">${clockDisplay()}</strong><small id="focus-label">${focusMode==='pomodoro'?'FOCUS SESSION':focusMode==='stopwatch'?'STOPWATCH':'COUNTDOWN'}</small></div></div><div class="timer-controls">${button(focusRunning?'Pause':'Start', 'focus-toggle','btn btn-primary')}${button('Reset','focus-reset','btn')}</div><div class="field" style="max-width:220px;margin:20px auto 0"><label>Link to a task (optional)</label><select class="select" id="focus-task"><option value="">No linked task</option>${state.tasks.filter(t=>t.date===todayISO()&&t.status!=='completed').map(t=>`<option value="${t.id}" ${focusTaskId===t.id?'selected':''}>${esc(t.title)}</option>`).join('')}</select></div></div><div class="grid"><div class="card card-pad"><div class="card-title">Session settings</div><div class="card-subtitle">Adjust your focus and break intervals</div><div class="form-grid" style="margin-top:15px"><div class="field"><label>Focus minutes</label><input class="input" type="number" id="focus-minutes" min="1" max="180" value="25"></div><div class="field"><label>Break minutes</label><input class="input" type="number" id="break-minutes" min="1" max="60" value="5"></div></div><button class="btn btn-soft btn-block" style="margin-top:13px" data-action="save-focus-settings">Save timer settings</button></div><div class="card card-pad"><div class="section-head"><div class="card-title">Today's focus sessions</div><span class="tag">${state.focusSessions.filter(s=>s.date===todayISO()).length} sessions</span></div>${state.focusSessions.filter(s=>s.date===todayISO()).map(s=>`<div class="routine-mini"><span class="routine-name">${esc(s.taskTitle||'Focus session')}</span><span class="routine-days">${s.minutes} min</span></div>`).join('')||'<p class="small muted">Completed focus sessions will appear here.</p>'}</div></div></div>`}
-function clockDisplay(){const s=focusSeconds;return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+//bug fixing in focus mode by yasir
+let focusMode = 'pomodoro';
+let focusTaskId = '';
+
+const focusTimers = {
+    pomodoro: {
+        seconds: (state.preferences.focusMinutes || 25) * 60,
+        running: false,
+        interval: null,
+        elapsedSeconds: 0,
+        startedAt: null,
+        taskId: null,
+        taskTitle: ''
+    },
+    stopwatch: {
+        seconds: 0,
+        running: false,
+        interval: null,
+        elapsedSeconds: 0,
+        startedAt: null,
+        taskId: null,
+        taskTitle: ''
+    },
+    timer: {
+        seconds: (state.preferences.timerMinutes || 15) * 60,
+        running: false,
+        interval: null,
+        elapsedSeconds: 0,
+        startedAt: null,
+        taskId: null,
+        taskTitle: ''
+    }
+};
+
+function focusCurrent() {
+    return focusTimers[focusMode];
+}
+function focusPage(){const focusMins=state.preferences.focusMinutes||25,breakMins=state.preferences.breakMinutes||5;return `${heading('Focus studio','A quiet space for focused work, timed sessions and breaks.',`<span class="tag teal">Your focus, your pace</span>`)}<div class="grid two-col"><div class="card focus-timer"><div class="toolbar" style="justify-content:center"><button class="btn btn-small ${focusMode==='pomodoro'?'btn-soft focus-mode-active':''}" aria-pressed="${focusMode==='pomodoro'}" data-action="set-focus-mode" data-mode="pomodoro">Pomodoro</button><button class="btn btn-small ${focusMode==='stopwatch'?'btn-soft focus-mode-active':''}" aria-pressed="${focusMode==='stopwatch'}" data-action="set-focus-mode" data-mode="stopwatch">Stopwatch</button><button class="btn btn-small ${focusMode==='timer'?'btn-soft focus-mode-active':''}" aria-pressed="${focusMode==='timer'}" data-action="set-focus-mode" data-mode="timer">Timer</button></div><div class="timer-ring"><div><strong id="focus-clock">${clockDisplay()}</strong><small id="focus-label">${focusMode==='pomodoro'?'FOCUS SESSION':focusMode==='stopwatch'?'STOPWATCH':'COUNTDOWN'}</small></div></div><div class="timer-controls">${button(focusCurrent().running ? 'Pause' : 'Start', 'focus-toggle', 'btn btn-primary')}${button('Reset','focus-reset','btn')}</div><div class="field" style="max-width:220px;margin:20px auto 0"><label>Link to a task (optional)</label><select class="select" id="focus-task"><option value="">No linked task</option>${state.tasks.filter(t=>t.date===todayISO()&&t.status!=='completed').map(t=>`<option value="${t.id}" ${focusTaskId===t.id?'selected':''}>${esc(t.title)}</option>`).join('')}</select></div></div><div class="grid"><div class="card card-pad"><div class="card-title">Session settings</div><div class="card-subtitle">Adjust your focus and break intervals</div><div class="form-grid" style="margin-top:15px"><div class="field"><label>Focus minutes</label><input class="input" type="number" id="focus-minutes" min="1" max="180" value="${focusMins}"></div><div class="field"><label>Break minutes</label><input class="input" type="number" id="break-minutes" min="1" max="60" value="${breakMins}"></div></div><button class="btn btn-soft btn-block" style="margin-top:13px" data-action="save-focus-settings">Save timer settings</button></div><div class="card card-pad"><div class="section-head"><div class="card-title">Today's focus sessions</div><span class="tag">${state.focusSessions.filter(s=>s.date===todayISO()).length} sessions</span></div>${state.focusSessions.filter(s=>s.date===todayISO()).map(s=>`<div class="routine-mini"><span class="routine-name">${esc(s.taskTitle||'Focus session')}</span><span class="routine-days">${s.minutes} min</span></div>`).join('')||'<p class="small muted">Completed focus sessions will appear here.</p>'}</div></div></div>`}
+//bug fix
+function clockDisplay() {
+    const s = focusCurrent().seconds;
+
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+//
 function habits(){return `${heading('Habits','Build consistency through small repeatable actions.',button('＋ Add habit','add-habit','btn btn-primary'))}<div class="card card-pad"><div class="section-head"><div><div class="card-title">Your habits</div><div class="card-subtitle">Check in when you complete a habit today.</div></div><span class="tag teal">${state.habits.filter(h=>h.done.includes(todayISO())).length}/${state.habits.length} done today</span></div>${state.habits.map(h=>`<div class="habit-row"><div><strong style="font-size:11px">${esc(h.name)}</strong><div class="task-meta">${h.days.length} days per week · ${h.done.length} total check-ins</div></div><div class="habit-days">${['M','T','W','T','F','S','S'].map((d,i)=>`<span class="habit-day ${h.done.includes(addDays(todayISO(),-((new Date().getDay()+6)%7)+i))?'checked':''}">${d}</span>`).join('')}</div><button class="btn btn-small ${h.done.includes(todayISO())?'btn-soft':''}" data-action="toggle-habit" data-id="${h.id}">${h.done.includes(todayISO())?'✓ Done':'Check in'}</button></div>`).join('')||'<div class="empty-state">No habits created yet.</div>'}</div>`}
-function insights(){const d=todayISO(),week=Array.from({length:7},(_,i)=>addDays(d,i-6)),vals=week.map(x=>state.tasks.filter(t=>t.date===x&&t.status==='completed').length),max=Math.max(1,...vals),completed=state.tasks.filter(t=>t.status==='completed').length,incomplete=state.tasks.filter(t=>['incomplete','partial'].includes(t.status)).length,focus=state.focusSessions.reduce((a,s)=>a+s.minutes,0),all=state.tasks.length,pct=all?Math.round(completed/all*100):0;return `${heading('Productivity insights','Understand your patterns, not just your numbers.',button('Daily report','daily-report','btn btn-primary'))}<div class="grid stats-grid">${stat('Overall completion',`${pct}%`,'Across recorded tasks','✓','green')}${stat('Completed tasks',completed,'All-time records','☷','blue')}${stat('Incomplete tasks',incomplete,'Need another plan','↗','red')}${stat('Focus time',`${Math.floor(focus/60)}h ${focus%60}m`,'Recorded focus sessions','◎','amber')}</div><div class="grid two-col"><div class="card card-pad"><div class="section-head"><div><div class="card-title">Weekly task completion</div><div class="card-subtitle">Completed tasks per day · last 7 days</div></div><span class="tag teal">7 days</span></div><div class="bar-chart">${vals.map((v,i)=>`<div class="bar-col"><div class="bar" style="height:${Math.max(3,v/max*125)}px"></div><small>${fmtDate(week[i],{weekday:'short'})}</small></div>`).join('')}</div></div><div class="card card-pad"><div class="card-title">Task status breakdown</div><div class="card-subtitle">All recorded task occurrences</div>${[['Completed',completed,'#58bba8'],['Upcoming / active',state.tasks.filter(t=>['pending','progress'].includes(t.status)).length,'#7890ed'],['Incomplete / partial',incomplete,'#d78c83'],['Skipped',state.tasks.filter(t=>t.status==='skipped').length,'#aab3bd']].map(([n,v,c])=>`<div style="margin-top:18px"><div class="progress-label"><span>${n}</span><strong>${v}</strong></div><div class="progress-track"><div class="progress-fill" style="background:${c};width:${all?v/all*100:0}%"></div></div></div>`).join('')}</div></div><div class="callout" style="margin-top:15px">Analytics are calculated from recorded task occurrences and focus sessions. Rescheduled tasks are not counted as completed until you finish them.</div>`}
+let insightPeriod='weekly',insightDate=todayISO();
+function studyMinutesForDate(iso){
+ const sessionMins=state.focusSessions.filter(s=>s.date===iso&&(!s.taskId||taskById(s.taskId)?.category==='Study')).reduce((a,s)=>a+(Number(s.minutes)||0),0);
+ const taskMins=state.tasks.filter(t=>t.date===iso&&t.category==='Study').reduce((a,t)=>a+(t.status==='completed'?(Number(t.actual)||Number(t.duration)||0):(Number(t.actual)||0)),0);
+ return Math.max(sessionMins,taskMins);
+}
+function fmtHours(mins){const h=Math.floor(mins/60),m=Math.round(mins%60);return h?`${h}h ${m}m`:`${m}m`;}
+function insights(){
+ const d=todayISO(),ref=insightDate||d;
+ const studyToday=studyMinutesForDate(d);
+ const studySelectedDay=studyMinutesForDate(ref);
+ const weekStart=addDays(ref,-((new Date(ref+'T12:00:00').getDay()+6)%7));
+ const weekDays=Array.from({length:7},(_,i)=>addDays(weekStart,i));
+ const weekStudyVals=weekDays.map(studyMinutesForDate);
+ const studyWeekTotal=weekStudyVals.reduce((a,b)=>a+b,0);
+ const refObj=new Date(ref+'T12:00:00'),y=refObj.getFullYear(),m=refObj.getMonth();
+ const daysInMonth=new Date(y,m+1,0).getDate();
+ const monthDays=Array.from({length:daysInMonth},(_,i)=>`${y}-${String(m+1).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+ const monthStudyVals=monthDays.map(studyMinutesForDate);
+ const studyMonthTotal=monthStudyVals.reduce((a,b)=>a+b,0);
+ const yearMonths=Array.from({length:12},(_,mi)=>{
+  const prefix=`${y}-${String(mi+1).padStart(2,'0')}-`;
+  const dim=new Date(y,mi+1,0).getDate();
+  let total=0;
+  for(let day=1;day<=dim;day++)total+=studyMinutesForDate(`${prefix}${String(day).padStart(2,'0')}`);
+  return {label:new Date(y,mi,1).toLocaleDateString(undefined,{month:'short'}),mins:total};
+ });
+ const studyYearTotal=yearMonths.reduce((a,x)=>a+x.mins,0);
+ let chartTitle='',chartSub='',chartBadge='',bars=[];
+ if(insightPeriod==='daily'){
+  const dayStudyTasks=state.tasks.filter(t=>t.date===ref&&t.category==='Study');
+  const dayStudySessions=state.focusSessions.filter(s=>s.date===ref&&(!s.taskId||taskById(s.taskId)?.category==='Study'));
+  chartTitle=`Daily study breakdown · ${fmtDate(ref,{weekday:'short',month:'short',day:'numeric'})}`;
+  chartSub=`Total studied: ${fmtHours(studySelectedDay)} (${(studySelectedDay/60).toFixed(1)} hrs)`;
+  chartBadge='Daily';
+  const items=[...dayStudyTasks.map(t=>({label:t.title.slice(0,10),mins:t.status==='completed'?(Number(t.actual)||Number(t.duration)||0):(Number(t.actual)||0)})),...dayStudySessions.filter(s=>!s.taskId).map(s=>({label:(s.taskTitle||'Focus').slice(0,10),mins:Number(s.minutes)||0}))].filter(x=>x.mins>0);
+  bars=items.length?items:[{label:'No study',mins:0}];
+ }else if(insightPeriod==='weekly'){
+  chartTitle='Weekly study hours';
+  chartSub=`${fmtDate(weekStart,{month:'short',day:'numeric'})} — ${fmtDate(weekDays[6],{month:'short',day:'numeric'})} · Total: ${fmtHours(studyWeekTotal)} (${(studyWeekTotal/60).toFixed(1)} hrs)`;
+  chartBadge='Weekly';
+  bars=weekDays.map((iso,i)=>({label:fmtDate(iso,{weekday:'short'}),mins:weekStudyVals[i]}));
+ }else if(insightPeriod==='monthly'){
+  chartTitle=`Monthly study hours · ${refObj.toLocaleDateString(undefined,{month:'long',year:'numeric'})}`;
+  chartSub=`Total: ${fmtHours(studyMonthTotal)} (${(studyMonthTotal/60).toFixed(1)} hrs) · Daily avg: ${fmtHours(Math.round(studyMonthTotal/daysInMonth))}`;
+  chartBadge='Monthly';
+  bars=monthDays.map((iso,i)=>({label:(i+1)%5===1||i===daysInMonth-1?String(i+1):'',mins:monthStudyVals[i],title:`${fmtDate(iso,{month:'short',day:'numeric'})}: ${fmtHours(monthStudyVals[i])}`}));
+ }else{
+  chartTitle=`Yearly study hours · ${y}`;
+  chartSub=`Total: ${fmtHours(studyYearTotal)} (${(studyYearTotal/60).toFixed(1)} hrs) · Monthly avg: ${fmtHours(Math.round(studyYearTotal/12))}`;
+  chartBadge='Yearly';
+  bars=yearMonths.map(x=>({label:x.label,mins:x.mins}));
+ }
+ const maxBar=Math.max(60,...bars.map(b=>b.mins));
+ const completed=state.tasks.filter(t=>t.status==='completed').length,incomplete=state.tasks.filter(t=>['incomplete','partial'].includes(t.status)).length,focus=state.focusSessions.reduce((a,s)=>a+s.minutes,0),all=state.tasks.length,pct=all?Math.round(completed/all*100):0;
+ return `${heading('Productivity insights','Track your study hours and patterns across days, weeks and months.',button('Daily report','daily-report','btn btn-primary'))}<div class="toolbar"><button class="btn btn-small ${insightPeriod==='daily'?'btn-primary':''}" data-action="set-insight-period" data-period="daily">Daily</button><button class="btn btn-small ${insightPeriod==='weekly'?'btn-primary':''}" data-action="set-insight-period" data-period="weekly">Weekly</button><button class="btn btn-small ${insightPeriod==='monthly'?'btn-primary':''}" data-action="set-insight-period" data-period="monthly">Monthly</button><button class="btn btn-small ${insightPeriod==='yearly'?'btn-primary':''}" data-action="set-insight-period" data-period="yearly">Yearly</button><input class="input" style="width:155px" type="date" id="insight-date" value="${ref}"></div><div class="grid stats-grid">${stat('Studied today',`${(studyToday/60).toFixed(1)} hrs`,`${fmtHours(studyToday)} logged today`,'◷','blue')}${stat('Weekly study',`${(studyWeekTotal/60).toFixed(1)} hrs`,`${fmtHours(studyWeekTotal)} this week`,'◎','teal')}${stat('Monthly study',`${(studyMonthTotal/60).toFixed(1)} hrs`,`${fmtHours(studyMonthTotal)} this month`,'▥','amber')}${stat('Overall completion',`${pct}%`,`${completed}/${all} tasks completed`,'✓','green')}</div><div class="grid two-col"><div class="card card-pad"><div class="section-head"><div><div class="card-title">${chartTitle}</div><div class="card-subtitle">${chartSub}</div></div><span class="tag teal">${chartBadge}</span></div><div class="bar-chart" style="gap:${bars.length>15?'2px':'8px'}">${bars.map(b=>`<div class="bar-col" title="${esc(b.title||`${b.label}: ${fmtHours(b.mins)}`)}"><div class="bar" style="height:${Math.max(3,b.mins/maxBar*125)}px"></div><small>${esc(b.label)}</small></div>`).join('')}</div></div><div class="card card-pad"><div class="card-title">Task status breakdown</div><div class="card-subtitle">All recorded task occurrences</div>${[['Completed',completed,'#58bba8'],['Upcoming / active',state.tasks.filter(t=>['pending','progress'].includes(t.status)).length,'#7890ed'],['Incomplete / partial',incomplete,'#d78c83'],['Skipped',state.tasks.filter(t=>t.status==='skipped').length,'#aab3bd']].map(([n,v,c])=>`<div style="margin-top:18px"><div class="progress-label"><span>${n}</span><strong>${v}</strong></div><div class="progress-track"><div class="progress-fill" style="background:${c};width:${all?v/all*100:0}%"></div></div></div>`).join('')}</div></div><div class="callout" style="margin-top:15px">Study hours combine completed/logged <strong>Study</strong> category tasks and Focus Studio sessions. Switch between Daily, Weekly, Monthly, and Yearly views above to inspect your study consistency.</div>`;
+}
 function notificationsPage(){const unread=state.notifications.filter(n=>!n.read).length;return `${heading('Notifications','Task reminders and schedule updates in one place.',button('Mark all read','mark-all-read','btn')+button('Notification settings','notification-settings','btn btn-primary'))}<div class="card card-pad"><div class="section-head"><div><div class="card-title">Your notifications</div><div class="card-subtitle">${unread} unread · ${state.notifications.length} total</div></div><span class="tag teal">Local reminders</span></div>${state.notifications.length?state.notifications.map(n=>`<div class="history-row ${n.read?'':'notification-unread'}"><span class="history-icon">${n.type==='task'?'◷':n.type==='success'?'✓':n.type==='warning'?'!':'♧'}</span><div><strong>${esc(n.title)}</strong><small>${esc(n.message)}</small></div><div class="notification-actions"><time>${new Date(n.createdAt).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</time>${button(n.read?'Read':'Mark read','read-notification','btn btn-small','data-id="'+n.id+'"')}</div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">♧</div><h3>You are all caught up</h3><p>Task reminders and schedule updates will appear here while wisedayZ is open.</p></div>'}</div><div class="callout" style="margin-top:14px">Browser reminders run while this page is open. Reliable background and closed-app notifications require a deployed service worker and push backend, which are not part of this local prototype.</div>`}
 function historyPage(){return `${heading('Activity history','A transparent record of task and schedule changes.',button('Export CSV','export-history','btn'))}<div class="card card-pad">${state.history.length?state.history.map(h=>`<div class="history-row"><span class="history-icon">${h.type==='completed'?'✓':h.type==='rescheduled'?'↻':h.type==='created'?'＋':'◷'}</span><div><strong>${esc(h.title)}</strong><small>${esc(h.detail||h.type)} · ${h.type}</small></div><time>${new Date(h.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</time></div>`).join(''):'<div class="empty-state"><div class="empty-icon">↺</div><h3>No activity yet</h3><p>Task changes, completions and approved schedule updates will appear here.</p></div>'}</div>`}
-function settings(){return `${heading('Settings','Make wisedayZ work the way you do.',button('Save preferences','save-settings','btn btn-primary'))}<div class="grid two-col"><div class="card card-pad"><div class="card-title">Planning preferences</div><div class="card-subtitle">Default times and scheduling behavior</div><div class="form-grid" style="margin-top:16px"><div class="field"><label>Default wake-up</label><input class="input" id="pref-wake" type="time" value="${state.preferences.wake}"></div><div class="field"><label>Preferred bedtime</label><input class="input" id="pref-sleep" type="time" value="${state.preferences.sleep}"></div><div class="field"><label>Default task duration (minutes)</label><input class="input" id="pref-duration" type="number" min="5" value="${state.preferences.defaultDuration}"></div><div class="field"><label>Timezone</label><input class="input" value="${esc(state.user.timezone)}" disabled></div></div><div class="divider"></div><div class="settings-row"><div><strong>Schedule approval</strong><small>Review every schedule proposal before applying changes.</small></div><span class="tag teal">Always on</span></div><div class="settings-row"><div><strong>Protect sleep window</strong><small>The scheduler avoids placing tasks inside your sleep period.</small></div><input type="checkbox" class="switch" id="pref-quiet" ${state.preferences.quiet?'checked':''}></div><div class="settings-row"><div><strong>Notifications</strong><small>Receive task reminders and schedule updates.</small></div><input type="checkbox" class="switch" id="pref-notifications" ${state.preferences.notifications?'checked':''}></div></div><div class="card card-pad"><div class="card-title">Data & account</div><div class="card-subtitle">Your data is stored locally and can sync to your account when online.</div><div class="settings-row"><div><strong>Export your data</strong><small>Download routines, tasks and history as JSON.</small></div>${button('Export JSON','export-data','btn btn-small')}</div><div class="settings-row"><div><strong>Import backup</strong><small>Restore a wisedayZ JSON backup.</small></div><label class="btn btn-small">Import<input type="file" id="import-data" accept="application/json" hidden></label></div><div class="settings-row"><div><strong>Reset demo data</strong><small>Restore the original sample workspace.</small></div>${button('Reset','reset-data','btn btn-small btn-danger')}</div><div class="callout" style="margin-top:15px">Cloud sync is available after signing in. Scheduling uses local rules. No external AI service or API key is required.</div></div></div>`}
+function settings(){return `${heading('Settings','Make wisedayZ work the way you do.',button('Save preferences','save-settings','btn btn-primary'))}<div class="grid two-col"><div class="card card-pad"><div class="card-title">Planning preferences</div><div class="card-subtitle">Default times and scheduling behavior</div><div class="form-grid" style="margin-top:16px"><div class="field"><label>Default wake-up</label><input class="input" id="pref-wake" type="time" value="${state.preferences.wake}"></div><div class="field"><label>Preferred bedtime</label><input class="input" id="pref-sleep" type="time" value="${state.preferences.sleep}"></div><div class="field"><label>Default task duration (minutes)</label><input class="input" id="pref-duration" type="number" min="5" value="${state.preferences.defaultDuration}"></div><div class="field"><label>Timezone</label><input class="input" value="${esc(state.user.timezone)}" disabled></div></div><div class="divider"></div><div class="settings-row"><div><strong>Appearance</strong><small>Switch between light mode and night mode.</small></div><button class="btn btn-small" id="settings-theme-btn" data-action="toggle-theme">${state.preferences.theme==='dark'?'☀ Switch to light mode':'☾ Switch to night mode'}</button></div><div class="settings-row"><div><strong>Schedule approval</strong><small>Review every schedule proposal before applying changes.</small></div><span class="tag teal">Always on</span></div><div class="settings-row"><div><strong>Protect sleep window</strong><small>The scheduler avoids placing tasks inside your sleep period.</small></div><input type="checkbox" class="switch" id="pref-quiet" ${state.preferences.quiet?'checked':''}></div><div class="settings-row"><div><strong>Notifications</strong><small>Receive task reminders and schedule updates.</small></div><input type="checkbox" class="switch" id="pref-notifications" ${state.preferences.notifications?'checked':''}></div></div><div class="card card-pad"><div class="card-title">Data & account</div><div class="card-subtitle">Your data is stored locally and can sync to your account when online.</div><div class="settings-row"><div><strong>Export your data</strong><small>Download routines, tasks and history as JSON.</small></div>${button('Export JSON','export-data','btn btn-small')}</div><div class="settings-row"><div><strong>Import backup</strong><small>Restore a wisedayZ JSON backup.</small></div><label class="btn btn-small">Import<input type="file" id="import-data" accept="application/json" hidden></label></div><div class="settings-row"><div><strong>Reset demo data</strong><small>Restore the original sample workspace.</small></div>${button('Reset','reset-data','btn btn-small btn-danger')}</div><div class="callout" style="margin-top:15px">Cloud sync is available after signing in. Scheduling uses local rules. No external AI service or API key is required.</div></div></div>`}
 function profile(){return `${heading('Profile','Your personal workspace information.',button('Save profile','save-profile','btn btn-primary'))}<div class="card card-pad" style="max-width:620px"><div class="row" style="display:flex;align-items:center;gap:13px;margin-bottom:20px"><span class="avatar" style="width:54px;height:54px;font-size:20px">${esc((state.user.name||'U')[0].toUpperCase())}</span><div><strong>${esc(state.user.name)}</strong><div class="small muted">Personal workspace</div></div></div><div class="form-grid"><div class="field"><label>Full name</label><input class="input" id="profile-name" value="${esc(state.user.name)}"></div><div class="field"><label>Email</label><input class="input" id="profile-email" type="email" value="${esc(state.user.email)}"></div></div></div>`}
 function help(){return `${heading('Help & support','Guidance for using your personal scheduler.')}<div class="grid two-col"><div class="card card-pad"><div class="card-title">How schedule proposals work</div><p class="small muted" style="line-height:1.8">wisedayZ checks your available time, fixed commitments, task priorities, deadlines and remaining task durations. It prepares a proposal for you to review. Your active schedule changes only after you approve the proposal.</p><div class="divider"></div><div class="card-title">How partial completion works</div><p class="small muted" style="line-height:1.8">When you stop a task before finishing, record the time spent. wisedayZ calculates the remaining duration and can suggest another slot. Your original work history is preserved.</p></div><div class="card card-pad"><div class="card-title">Frequently asked questions</div>${[['Where is my data stored?','This prototype stores data in your browser local storage. Export a backup regularly.'],['Can the scheduler move college or meeting times?','No. Fixed tasks are protected unless you explicitly authorize a change.'],['Can I use multiple routines?','Yes. Activate the routine that matches your current schedule.'],['Does the app send real alarms?','This browser prototype supports in-app reminders; reliable background alarms require a native mobile implementation.']].map(([q,a])=>`<details style="padding:12px 0;border-bottom:1px solid #eef0f3"><summary style="font-size:10px;font-weight:700;cursor:pointer">${q}</summary><p class="small muted" style="line-height:1.7">${a}</p></details>`).join('')}</div></div>`}
 function alarm(){const r=getRoutine(),w=state.wakeRecords[todayISO()];return `${heading('Alarm & wake-up','Confirm your actual start to help wisedayZ adapt the day.',button('✧ Prepare schedule','reschedule','btn btn-primary'))}<div class="grid two-col"><div class="wake-card"><div class="eyebrow">TODAY'S WAKE-UP</div><h3>${w?'Wake-up confirmed':'Your planned start'}</h3><p>${w?`You confirmed at ${fmtTime(w.time)}.`:'Your active routine expects you to wake up at this time.'}</p><div class="wake-time">${w?fmtTime(w.time):fmtTime(r?.wake||state.preferences.wake)}</div>${w?'<span class="tag teal">Recorded</span>':button('I am awake','wake-confirm','btn btn-primary')}</div><div class="card card-pad"><div class="card-title">Alarm preferences</div><div class="field" style="margin-top:15px"><label>Wake-up time for active routine</label><input class="input" type="time" id="alarm-time" value="${r?.wake||state.preferences.wake}"></div><div class="field" style="margin-top:12px"><label>Repeat</label><div class="small muted">Uses the active routine's selected days.</div></div><button class="btn btn-primary btn-block" style="margin-top:15px" data-action="save-alarm">Save wake-up time</button><div class="callout" style="margin-top:15px">Browser limitations: a web page cannot guarantee an alarm when it is closed or the device is asleep. Use a native app for dependable background alarms.</div></div></div>`}
 function report(){const d=todayISO(),tasks=state.tasks.filter(t=>t.date===d),done=tasks.filter(t=>t.status==='completed'),open=tasks.filter(t=>['pending','progress','partial','incomplete'].includes(t.status)),focus=state.focusSessions.filter(s=>s.date===d).reduce((a,s)=>a+s.minutes,0);return `${heading('Daily report',`A clear review of ${fmtDate(d,{weekday:'long',month:'long',day:'numeric'})}.`,button('Export CSV','export-report','btn'))}<div class="grid stats-grid">${stat('Completed',done.length,`of ${tasks.length} scheduled tasks`,'✓','green')}${stat('Still open',open.length,'Need attention','◷','amber')}${stat('Focus time',`${focus} min`,'Tracked sessions','◎','blue')}${stat('Completion',`${tasks.length?Math.round(done.length/tasks.length*100):0}%`,'Daily plan','▥','green')}</div><div class="card card-pad"><div class="card-title">Today's task review</div>${tasks.length?taskTable(tasks):'<div class="empty-state">No scheduled tasks for today.</div>'}<div class="divider"></div><div class="card-title">Tomorrow's carry-forward suggestions</div><p class="small muted">The local scheduler can review unfinished tasks and prepare a proposal for a suitable future slot.</p>${button('Prepare proposal','reschedule','btn btn-primary btn-small')}</div>`}
-function render(){updateBadges();$('#page-crumb').textContent=routes[route]||'Overview';$$('.nav-group a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));const map={home:dashboard,daily,weekly,monthly,routines,tasks:()=>tasksPage('all'),incomplete:()=>tasksPage('incomplete'),completed:()=>tasksPage('completed'),assistant,focus:focusPage,habits,insights,history:historyPage,notifications:notificationsPage,settings,profile,help,alarm,report};$('#view').innerHTML=(map[route]||dashboard)();$('#sidebar').classList.remove('open');}
+function render(){applyTheme();updateBadges();$('#page-crumb').textContent=routes[route]||'Overview';$$('.nav-group a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));const map={home:dashboard,daily,weekly,monthly,routines,tasks:()=>tasksPage('all'),incomplete:()=>tasksPage('incomplete'),completed:()=>tasksPage('completed'),assistant,focus:focusPage,habits,insights,history:historyPage,notifications:notificationsPage,settings,profile,help,alarm,report};$('#view').innerHTML=(map[route]||dashboard)();$('#sidebar').classList.remove('open');}
 function modal(title,body,footer=''){const root=$('#modal-root');root.innerHTML=`<div class="modal-backdrop" data-action="backdrop-close"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h2>${title}</h2><button class="close-btn" data-action="close-modal">×</button></div><div class="modal-body">${body}</div>${footer?`<div class="modal-foot">${footer}</div>`:''}</div></div>`}
 function closeModal(){$('#modal-root').innerHTML=''}
 function taskForm(task=null,date=todayISO(),draft=null) {const t=task||{title:'',date,start:'09:00',duration:state.preferences.defaultDuration,priority:'medium',category:'Study',status:'pending',fixed:false,description:'',routineId:state.activeRoutine,deadline:'',repeat:'none',...(draft||{})};modal(task?'Edit task':'Create task',`<form id="task-form"><input type="hidden" name="id" value="${task?.id||''}"><div class="form-grid"><div class="field full"><label>Task title *</label><input class="input" name="title" required maxlength="90" placeholder="e.g. SystemVerilog practice" value="${esc(t.title)}"></div><div class="field"><label>Date *</label><input class="input" type="date" name="date" required value="${t.date}"></div><div class="field"><label>Start time *</label><input class="input" type="time" name="start" required value="${t.start}"></div><div class="field"><label>Duration (minutes) *</label><input class="input" type="number" min="5" max="1440" name="duration" required value="${t.duration}"></div><div class="field"><label>Priority</label><select class="select" name="priority"><option ${t.priority==='high'?'selected':''}>high</option><option ${t.priority==='medium'?'selected':''}>medium</option><option ${t.priority==='low'?'selected':''}>low</option></select></div><div class="field"><label>Category</label><select class="select" name="category">${['Study','College','Work','Project','Fitness','Personal','Health','Other'].map(c=>`<option ${t.category===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="field"><label>Routine</label><select class="select" name="routineId"><option value="">No routine</option>${state.routines.map(r=>`<option value="${r.id}" ${t.routineId===r.id?'selected':''}>${esc(r.name)}</option>`).join('')}</select></div><div class="field"><label>Deadline (optional)</label><input class="input" type="date" name="deadline" value="${t.deadline||''}"></div><div class="field"><label>Prerequisite task (optional)</label><select class="select" name="dependsOn"><option value="">No prerequisite</option>${state.tasks.filter(x=>x.id!==task?.id&&!(['completed','skipped'].includes(x.status))).map(x=>`<option value="${x.id}" ${t.dependsOn===x.id?'selected':''}>${esc(x.title)} · ${fmtDate(x.date,{month:'short',day:'numeric'})}</option>`).join('')}</select></div><div class="field"><label>Repeat</label><select class="select" name="repeat"><option value="none">Does not repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option></select></div><div class="field"><label>Scheduling type</label><select class="select" name="fixed"><option value="false" ${!t.fixed?'selected':''}>Flexible — can be moved</option><option value="true" ${t.fixed?'selected':''}>Fixed — protect this time</option></select></div><div class="field full"><label>Description / notes</label><textarea class="textarea" name="description" placeholder="Add useful details…">${esc(t.description||'')}</textarea></div></div></form>`,`${task?button('Delete','delete-task','btn btn-danger','data-id="'+task.id+'"'):''}<button class="btn" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="save-task">${task?'Save changes':'Create task'}</button>`)}
@@ -185,6 +342,9 @@ function validateBackup(data){
 }
 function migrateImportedState(data){
  const migrated={...data,schemaVersion:6,user:data.user||{},preferences:data.preferences||{},tasks:data.tasks||[],routines:data.routines||[],history:data.history||[],notifications:data.notifications||[],habits:data.habits||[],proposals:data.proposals||[],wakeRecords:data.wakeRecords||{},focusSessions:data.focusSessions||[]};
+ migrated.preferences.focusMinutes ??= 25;
+ migrated.preferences.breakMinutes ??= 5;
+ migrated.preferences.timerMinutes ??= 15;
  migrated.tasks=migrated.tasks.map(t=>({...t,dependsOn:t.dependsOn||null,seriesId:t.seriesId??null,actual:Number(t.actual)||0,remaining:Number(t.remaining??Math.max(0,(Number(t.duration)||0)-(Number(t.actual)||0)))}));
  migrated.routines=migrated.routines.map(r=>({...r,days:Array.isArray(r.days)?r.days:[0,1,2,3,4,5,6]}));
  return migrated;
@@ -329,7 +489,104 @@ function sendChat(){
  if(action){const b=document.createElement('button');b.className='btn btn-primary btn-small';b.textContent=label;b.dataset.action=action;reply.append(document.createElement('br'),b)}
  thread.append(reply);thread.scrollTop=thread.scrollHeight;
 }
-function focusToggle(){if(focusRunning){focusRunning=false;clearInterval(focusInterval);focusInterval=null;render();return}focusRunning=true;focusInterval=setInterval(()=>{if(focusMode==='stopwatch')focusSeconds++;else focusSeconds=Math.max(0,focusSeconds-1);const clock=$('#focus-clock');if(clock)clock.textContent=clockDisplay();if(focusMode!=='stopwatch'&&focusSeconds===0){clearInterval(focusInterval);focusInterval=null;focusRunning=false;const task=taskById(focusTaskId);const minutes=Number($('#focus-minutes')?.value||25);state.focusSessions.unshift({id:uid(),date:todayISO(),minutes:focusMode==='pomodoro'?minutes:Number($('#timer-initial')?.value||minutes),taskId:task?.id||null,taskTitle:task?.title||'',type:focusMode});save();toast('Focus session finished. Take a moment to reset.','success');render()}},1000);render()}
+//
+function saveFocusSession(mode, timer, status = 'completed') {
+    const seconds = timer.elapsedSeconds;
+
+    // Ignore accidental sessions shorter than 30 seconds.
+    if (seconds < 30) return;
+
+    state.focusSessions.unshift({
+        id: uid(),
+        date: todayISO(),
+        minutes: Math.round(seconds / 60),
+        durationSeconds: seconds,
+        taskId: timer.taskId || null,
+        taskTitle: timer.taskTitle || '',
+        type: mode,
+        status,
+        startedAt: timer.startedAt,
+        endedAt: Date.now()
+    });
+
+    save();
+}
+
+function focusToggle() {
+    const mode = focusMode;
+    const timer = focusCurrent();
+
+    // Pause the selected timer.
+    if (timer.running) {
+        timer.running = false;
+        clearInterval(timer.interval);
+        timer.interval = null;
+        render();
+        return;
+    }
+
+    // Start or resume the selected timer.
+    timer.running = true;
+
+    if (!timer.startedAt) {
+        timer.startedAt = Date.now();
+
+        const task = taskById(focusTaskId);
+        timer.taskId = task?.id || null;
+        timer.taskTitle = task?.title || '';
+    }
+
+    timer.interval = setInterval(() => {
+
+        if (!timer.running) return;
+
+        timer.elapsedSeconds++;
+
+        if (mode === 'stopwatch') {
+            timer.seconds++;
+        } else {
+            timer.seconds = Math.max(0, timer.seconds - 1);
+        }
+
+        // Update the visible clock only for the selected mode.
+        if (focusMode === mode && route === 'focus') {
+            const clock = $('#focus-clock');
+
+            if (clock) {
+                clock.textContent = clockDisplay();
+            }
+        }
+
+        // Countdown completed.
+        if (mode !== 'stopwatch' && timer.seconds <= 0) {
+
+            timer.running = false;
+            clearInterval(timer.interval);
+            timer.interval = null;
+
+            saveFocusSession(mode, timer, 'completed');
+
+            const configuredMins = mode === 'pomodoro'
+                ? (state.preferences.focusMinutes || 25)
+                : (state.preferences.timerMinutes || 15);
+            timer.seconds = configuredMins * 60;
+            timer.elapsedSeconds = 0;
+            timer.startedAt = null;
+            timer.taskId = null;
+            timer.taskTitle = '';
+
+            toast(`${mode} session completed!`, 'success');
+
+            if (focusMode === mode && route === 'focus') {
+                render();
+            }
+        }
+
+    }, 1000);
+
+    render();
+}
+//
 function scanTaskReminders(){
  if(!state.preferences.notifications)return;
  const now=new Date(),today=todayISO(),nowM=now.getHours()*60+now.getMinutes();
@@ -344,14 +601,262 @@ function requestNotificationPermission(){if(!('Notification' in window)){toast('
 function exportFile(name,data,type='application/json'){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 function exportCSV(rows,name){const csv=rows.map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');exportFile(name,csv,'text/csv')}
 async function handleAction(el,evt){const a=el.dataset.action,id=el.dataset.id;
- switch(a){case'open-account':showAccount();break;case'save-api-base':{const v=$('#api-base-input')?.value.trim().replace(/\/$/,'');if(!v||!/^https?:\/\//.test(v)){toast('Enter a valid http(s) API endpoint','error');break}localStorage.setItem('daywise.apiBase',v);location.reload();break}case'pull-cloud':restoreCloudWorkspace();break;case'keep-local':{try{const ws=await apiRequest('/api/workspace');cloudVersion=ws.version||0;syncPending=true;await flushCloudSync();$('#account-root').innerHTML='';toast('Local workspace uploaded','success')}catch(err){toast(err.message,'error')}break}case'logout':{if(localStorage.getItem(QUEUE_KEY)&&!confirm('There are unsynced changes saved in this browser. Sign out and keep them queued for your next sign-in?'))break;try{await apiRequest('/api/auth/logout',{method:'POST',body:'{}'})}catch{}authSession=null;localStorage.removeItem(AUTH_KEY);cloudVersion=0;setCloudStatus('Offline');$('#account-root').innerHTML='';toast('Signed out. Local data remains on this browser.');break}case'close-modal':closeModal();break;case'add-task':taskForm(null,el.dataset.date||selectedDate);break;case'edit-task':taskForm(taskById(id));break;case'view-task':taskDetail(id);break;case'save-task':saveTaskFromForm();break;case'delete-task':{const t=taskById(id);if(t){const mode=t.seriesId?prompt('Delete recurring task: enter 1 for this occurrence, 2 for this and future occurrences, or 3 for the entire series.','1'):'1';if(!['1','2','3'].includes(mode))break;const removed=t.seriesId?state.tasks.filter(x=>x.seriesId===t.seriesId&&(mode==='3'||(mode==='2'&&x.date>=t.date)||x.id===id)):[t];if(!confirm(`Delete ${removed.length} occurrence(s)? This cannot be undone.`))break;const removedIds=new Set(removed.map(x=>x.id));state.tasks=state.tasks.filter(x=>!removedIds.has(x.id));state.tasks.forEach(x=>{if(removedIds.has(x.dependsOn))x.dependsOn=null});log('deleted',t,`${removed.length} recurring occurrence(s) deleted; prerequisite links cleared`);save();closeModal();render();toast(`${removed.length} occurrence(s) deleted`)}break}case'start-task':startTask(taskById(id));break;case'complete-task':markComplete(taskById(id));break;case'mark-complete':markComplete(taskById(id));break;case'skip-task':{const t=taskById(id);if(t){t.status='skipped';log('skipped',t,'Task skipped');save();closeModal();render();toast('Task marked as skipped')}break}case'mark-incomplete':recordIncomplete(taskById(id));break;case'save-progress':saveProgress(id);break;case'wake-confirm':wakeConfirm();break;case'save-wake':{const time=$('#wake-actual').value;if(!time){toast('Choose your actual wake-up time','error');break}state.wakeRecords[todayISO()]={time,at:Date.now()};save();closeModal();render();toast('Wake-up recorded. Prepare today’s schedule when ready.','success');prepareScheduleModal();break}case'wake-info':go('alarm');break;case'reschedule':{const p=createProposal('Schedule review requested');proposalModal(p);break}case'open-proposal':proposalModal(state.proposals.find(p=>p.id===id));break;case'approve-proposal':approveProposal(id);break;case'reject-proposal':rejectProposal(id);break;case'add-routine':routineForm();break;case'edit-routine':routineForm(state.routines.find(r=>r.id===id));break;case'save-routine':{const f=$('#routine-form');if(!f.reportValidity())break;const fd=new FormData(f),rid=fd.get('id'),r=rid?state.routines.find(x=>x.id===rid):{id:uid(),active:false,color:'teal'};Object.assign(r,{name:fd.get('name').trim(),description:fd.get('description'),wake:fd.get('wake'),sleep:fd.get('sleep'),days:fd.getAll('days').map(Number)});if(!r.days.length){toast('Select at least one active day','error');break}if(!rid)state.routines.push(r);log(rid?'updated':'created',null,`Routine ${r.name} ${rid?'updated':'created'}`);save();closeModal();render();toast('Routine saved','success');break}case'activate-routine':{const r=state.routines.find(x=>x.id===id);if(r){const previousRoutine=state.activeRoutine;const affected=state.tasks.filter(t=>t.routineId===previousRoutine&&!['completed','skipped'].includes(t.status));const migrate=affected.length&&confirm(`Activate ${r.name}? ${affected.length} active task(s) belong to another routine. Move these tasks to this routine? Choose Cancel to switch routines without moving tasks.`);if(migrate)affected.forEach(t=>{t.routineId=id;log('routine-moved',t,`Moved to ${r.name}`)});state.activeRoutine=id;r.active=true;state.routines.forEach(x=>x.active=x.id===id);state.preferences.wake=r.wake;state.preferences.sleep=r.sleep;save();render();toast(`${r.name} activated`,'success')}break}case'routine-menu':{const r=state.routines.find(x=>x.id===id);if(r&&confirm(`Delete routine “${r.name}”? Tasks already created will be kept.`)){state.routines=state.routines.filter(x=>x.id!==id);if(state.activeRoutine===id)state.activeRoutine=state.routines[0]?.id||null;save();render();toast('Routine deleted')}break}case'date-prev':selectedDate=addDays(selectedDate,-1);render();break;case'date-next':selectedDate=addDays(selectedDate,1);render();break;case'week-prev':weekOffset--;render();break;case'week-next':weekOffset++;render();break;case'week-now':weekOffset=0;render();break;case'month-prev':monthOffset--;render();break;case'month-next':monthOffset++;render();break;case'month-now':monthOffset=0;render();break;case'select-calendar-day':selectedDate=el.dataset.date;go('daily');break;case'focus-mode':case'set-focus-mode':focusMode=el.dataset.mode;focusRunning=false;clearInterval(focusInterval);focusInterval=null;focusSeconds=focusMode==='stopwatch'?0:focusMode==='timer'?15*60:25*60;if(route==='focus'){render()}else{go('focus')}break;case'focus-toggle':focusToggle();break;case'focus-reset':focusRunning=false;clearInterval(focusInterval);focusInterval=null;focusSeconds=focusMode==='stopwatch'?0:focusMode==='timer'?15*60:25*60;render();break;case'save-focus-settings':{const m=Math.max(1,Math.min(180,Number($('#focus-minutes').value)||25));focusSeconds=m*60;render();toast('Focus duration updated');break}case'add-habit':addHabit();break;case'save-habit':{const n=$('#habit-name').value.trim();if(!n){toast('Enter a habit name','error');break}state.habits.push({id:uid(),name:n,days:[0,1,2,3,4,5,6],done:[]});save();closeModal();render();toast('Habit created','success');break}case'toggle-habit':{const h=state.habits.find(x=>x.id===id);if(h){h.done=h.done.includes(todayISO())?h.done.filter(x=>x!==todayISO()):[...h.done,todayISO()];save();render()}break}case'send-chat':sendChat();break;case'ai-create-task':{let draft={};try{draft=JSON.parse(el.dataset.draft||'{}')}catch{}taskForm(null,draft.date||todayISO(),draft);break}case'show-incomplete':go('incomplete');break;case'daily-report':go('report');break;case'save-settings':{state.preferences.wake=$('#pref-wake').value;state.preferences.sleep=$('#pref-sleep').value;state.preferences.defaultDuration=Number($('#pref-duration').value)||60;state.preferences.quiet=$('#pref-quiet').checked;state.preferences.notifications=$('#pref-notifications').checked;save();toast('Preferences saved','success');break}case'save-profile':{const n=$('#profile-name').value.trim(),e=$('#profile-email').value.trim();if(!n||!e){toast('Name and email are required','error');break}state.user.name=n;state.user.email=e;save();render();toast('Profile updated','success');break}case'save-alarm':{const r=getRoutine();if(r){r.wake=$('#alarm-time').value;state.preferences.wake=r.wake;save();render();toast('Wake-up time saved')}break}case'export-data':exportFile('daywise-backup.json',JSON.stringify(state,null,2));toast('Backup exported','success');break;case'export-history':exportCSV([['Type','Task','Detail','Timestamp'],...state.history.map(h=>[h.type,h.title,h.detail,new Date(h.at).toISOString()])],'daywise-history.csv');break;case'export-report':exportCSV([['Task','Date','Start','Duration','Status'],...state.tasks.filter(t=>t.date===todayISO()).map(t=>[t.title,t.date,t.start,t.duration,t.status])],'daywise-daily-report.csv');break;case'reset-data':if(confirm('Reset all local wisedayZ data to the original demo workspace? Export a backup first if needed.')){state=defaultState();save();render();toast('Demo workspace restored')}break;case'notification-button':go('notifications');break;case'mark-all-read':state.notifications.forEach(n=>n.read=true);save();render();toast('All notifications marked as read');break;case'read-notification':{const n=state.notifications.find(x=>x.id===id);if(n)n.read=true;save();render();break}case'notification-settings':requestNotificationPermission();break;case'quick-search':{const q=prompt('Search tasks by name:');if(q){go('tasks');setTimeout(()=>{$('#task-search').value=q;$('#task-search').dispatchEvent(new Event('input'))},30)}break}case'profile-shortcut':go('profile');break;case'menu-toggle':$('#sidebar').classList.toggle('open');break;case'backdrop-close':if(el===evt?.target)closeModal();break;}
+ switch(a){
+  case 'close-account': {
+    const root = $('#account-root');
+    if (root) {
+        root.innerHTML = '';
+    }
+    setCloudStatus(authSession ? 'Account' : 'Offline');
+    break;
+  }
+  case 'toggle-theme':toggleTheme();break;
+  case 'open-account':showAccount();break;
+  case 'save-api-base':{const v=$('#api-base-input')?.value.trim().replace(/\/$/,'');if(!v||!/^https?:\/\//.test(v)){toast('Enter a valid http(s) API endpoint','error');break}localStorage.setItem('daywise.apiBase',v);location.reload();break}
+  case 'pull-cloud':restoreCloudWorkspace();break;
+  case 'keep-local':{try{const ws=await apiRequest('/api/workspace');cloudVersion=ws.version||0;syncPending=true;await flushCloudSync();$('#account-root').innerHTML='';toast('Local workspace uploaded','success')}catch(err){toast(err.message,'error')}break}
+  case 'logout':{if(localStorage.getItem(QUEUE_KEY)&&!confirm('There are unsynced changes saved in this browser. Sign out and keep them queued for your next sign-in?'))break;try{await apiRequest('/api/auth/logout',{method:'POST',body:'{}'})}catch{}authSession=null;localStorage.removeItem(AUTH_KEY);cloudVersion=0;setCloudStatus('Offline');$('#account-root').innerHTML='';toast('Signed out. Local data remains on this browser.');break}
+  case 'backdrop-close':
+  case 'close-modal':closeModal();break;
+  case 'add-task':taskForm(null,el.dataset.date||selectedDate);break;
+  case 'edit-task':taskForm(taskById(id));break;
+  case 'view-task':taskDetail(id);break;
+  case 'save-task':saveTaskFromForm();break;
+  case 'delete-task':{const t=taskById(id);if(t){const mode=t.seriesId?prompt('Delete recurring task: enter 1 for this occurrence, 2 for this and future occurrences, or 3 for the entire series.','1'):'1';if(!['1','2','3'].includes(mode))break;const removed=t.seriesId?state.tasks.filter(x=>x.seriesId===t.seriesId&&(mode==='3'||(mode==='2'&&x.date>=t.date)||x.id===id)):[t];if(!confirm(`Delete ${removed.length} occurrence(s)? This cannot be undone.`))break;const removedIds=new Set(removed.map(x=>x.id));state.tasks=state.tasks.filter(x=>!removedIds.has(x.id));state.tasks.forEach(x=>{if(removedIds.has(x.dependsOn))x.dependsOn=null});log('deleted',t,`${removed.length} recurring occurrence(s) deleted; prerequisite links cleared`);save();closeModal();render();toast(`${removed.length} occurrence(s) deleted`)}break}
+  case 'start-task':startTask(taskById(id));break;
+  case 'complete-task':markComplete(taskById(id));break;
+  case 'mark-complete':markComplete(taskById(id));break;
+  case 'skip-task':{const t=taskById(id);if(t){t.status='skipped';log('skipped',t,'Task skipped');save();closeModal();render();toast('Task marked as skipped')}break}
+  case 'mark-incomplete':recordIncomplete(taskById(id));break;
+  case 'save-progress':saveProgress(id);break;
+  case 'wake-confirm':wakeConfirm();break;
+  case 'save-wake':{const time=$('#wake-actual').value;if(!time){toast('Choose your actual wake-up time','error');break}state.wakeRecords[todayISO()]={time,at:Date.now()};save();closeModal();render();toast('Wake-up recorded. Prepare today’s schedule when ready.','success');prepareScheduleModal();break}
+  case 'wake-info':go('alarm');break;
+  case 'prepare-schedule':prepareScheduleModal();break;
+  case 'build-prepared-schedule':createPreparedProposal();break;
+  case 'reschedule':{const p=createProposal('Schedule review requested');proposalModal(p);break}
+  case 'open-proposal':proposalModal(state.proposals.find(p=>p.id===id));break;
+  case 'approve-proposal':approveProposal(id);break;
+  case 'reject-proposal':rejectProposal(id);break;
+  case 'add-routine':routineForm();break;
+  case 'edit-routine':routineForm(state.routines.find(r=>r.id===id));break;
+  case 'save-routine':{const f=$('#routine-form');if(!f.reportValidity())break;const fd=new FormData(f),rid=fd.get('id'),r=rid?state.routines.find(x=>x.id===rid):{id:uid(),active:false,color:'teal'};Object.assign(r,{name:fd.get('name').trim(),description:fd.get('description'),wake:fd.get('wake'),sleep:fd.get('sleep'),days:fd.getAll('days').map(Number)});if(!r.days.length){toast('Select at least one active day','error');break}if(!rid)state.routines.push(r);log(rid?'updated':'created',null,`Routine ${r.name} ${rid?'updated':'created'}`);save();closeModal();render();toast('Routine saved','success');break}
+  case 'activate-routine':{const r=state.routines.find(x=>x.id===id);if(r){const previousRoutine=state.activeRoutine;const affected=state.tasks.filter(t=>t.routineId===previousRoutine&&!['completed','skipped'].includes(t.status));const migrate=affected.length&&confirm(`Activate ${r.name}? ${affected.length} active task(s) belong to another routine. Move these tasks to this routine? Choose Cancel to switch routines without moving tasks.`);if(migrate)affected.forEach(t=>{t.routineId=id;log('routine-moved',t,`Moved to ${r.name}`)});state.activeRoutine=id;r.active=true;state.routines.forEach(x=>x.active=x.id===id);state.preferences.wake=r.wake;state.preferences.sleep=r.sleep;save();render();toast(`${r.name} activated`,'success')}break}
+  case 'routine-menu':{const r=state.routines.find(x=>x.id===id);if(r&&confirm(`Delete routine “${r.name}”? Tasks already created will be kept.`)){state.routines=state.routines.filter(x=>x.id!==id);if(state.activeRoutine===id)state.activeRoutine=state.routines[0]?.id||null;save();render();toast('Routine deleted')}break}
+  case 'date-prev':selectedDate=addDays(selectedDate,-1);render();break;
+  case 'date-next':selectedDate=addDays(selectedDate,1);render();break;
+  case 'week-prev':weekOffset--;render();break;
+  case 'week-next':weekOffset++;render();break;
+  case 'week-now':weekOffset=0;render();break;
+  case 'month-prev':monthOffset--;render();break;
+  case 'month-next':monthOffset++;render();break;
+  case 'month-now':monthOffset=0;render();break;
+  case 'select-calendar-day':selectedDate=el.dataset.date;go('daily');break;
+  case 'set-insight-period':
+    insightPeriod = el.dataset.period || 'weekly';
+    render();
+    break;
+  case 'focus-mode':
+  case 'set-focus-mode': {
+    const newMode = el.dataset.mode;
+
+    if (!focusTimers[newMode]) break;
+
+    // Only change the selected mode.
+    // Other timers continue running independently.
+    focusMode = newMode;
+
+    if (route === 'focus') {
+        render();
+    } else {
+        go('focus');
+    }
+
+    break;
+  }
+  case 'focus-toggle': {
+    focusToggle();
+    break;
+  }
+  case 'focus-reset': {
+    const timer = focusCurrent();
+
+    timer.running = false;
+    clearInterval(timer.interval);
+    timer.interval = null;
+
+    // Save any meaningful work before resetting.
+    saveFocusSession(focusMode, timer, 'interrupted');
+
+    if (focusMode === 'stopwatch') {
+        timer.seconds = 0;
+    } else {
+        timer.seconds = focusMode === 'pomodoro'
+            ? (state.preferences.focusMinutes || 25) * 60
+            : (state.preferences.timerMinutes || 15) * 60;
+    }
+
+    timer.elapsedSeconds = 0;
+    timer.startedAt = null;
+    timer.taskId = null;
+    timer.taskTitle = '';
+
+    render();
+    break;
+  }
+  case 'save-focus-settings': {
+    const m = Math.max(
+        1,
+        Math.min(180, Number($('#focus-minutes')?.value) || 25)
+    );
+    const b = Math.max(
+        1,
+        Math.min(60, Number($('#break-minutes')?.value) || 5)
+    );
+
+    const timer = focusTimers.pomodoro;
+
+    if (timer.running) {
+        toast('Pause Pomodoro before changing its duration.', 'error');
+        break;
+    }
+
+    state.preferences.focusMinutes = m;
+    state.preferences.breakMinutes = b;
+    timer.seconds = m * 60;
+    timer.elapsedSeconds = 0;
+    timer.startedAt = null;
+    save();
+
+    render();
+    toast('Pomodoro duration updated.', 'success');
+    break;
+  }
+  case 'add-habit':
+    addHabit();
+    break;
+  case 'save-habit': {
+    const name = $('#habit-name')?.value.trim();
+    if (!name) { toast('Enter a habit name', 'error'); break; }
+    state.habits.push({ id: uid(), name, days: [1, 2, 3, 4, 5, 6, 0], done: [] });
+    log('created', null, `Habit "${name}" created`);
+    save();
+    closeModal();
+    render();
+    toast('Habit created', 'success');
+    break;
+  }
+  case 'toggle-habit': {
+    const h = state.habits.find(x => x.id === id);
+    if (!h) break;
+    const d = todayISO();
+    const idx = h.done.indexOf(d);
+    if (idx >= 0) h.done.splice(idx, 1);
+    else h.done.push(d);
+    save();
+    render();
+    break;
+  }
+  case 'send-chat':
+    sendChat();
+    break;
+  case 'show-incomplete':
+    go('incomplete');
+    break;
+  case 'daily-report':
+    go('report');
+    break;
+  case 'save-settings': {
+    state.preferences.wake = $('#pref-wake')?.value || state.preferences.wake;
+    state.preferences.sleep = $('#pref-sleep')?.value || state.preferences.sleep;
+    state.preferences.defaultDuration = Math.max(5, Number($('#pref-duration')?.value) || 60);
+    state.preferences.quiet = Boolean($('#pref-quiet')?.checked);
+    state.preferences.notifications = Boolean($('#pref-notifications')?.checked);
+    log('updated', null, 'Planning preferences saved');
+    save();
+    render();
+    toast('Preferences saved', 'success');
+    break;
+  }
+  case 'save-profile': {
+    const name = $('#profile-name')?.value.trim();
+    const email = $('#profile-email')?.value.trim();
+    if (!name) { toast('Name cannot be empty', 'error'); break; }
+    state.user.name = name;
+    if (email) state.user.email = email;
+    log('updated', null, 'Profile updated');
+    save();
+    render();
+    toast('Profile saved', 'success');
+    break;
+  }
+  case 'save-alarm': {
+    const wake = $('#alarm-time')?.value;
+    if (!wake) { toast('Choose a wake-up time', 'error'); break; }
+    const r = getRoutine();
+    if (r) r.wake = wake;
+    state.preferences.wake = wake;
+    log('updated', null, `Wake-up time set to ${fmtTime(wake)}`);
+    save();
+    render();
+    toast('Wake-up time saved', 'success');
+    break;
+  }
+  case 'mark-all-read':
+    state.notifications.forEach(n => { n.read = true; });
+    save();
+    render();
+    toast('All notifications marked as read');
+    break;
+  case 'read-notification': {
+    const n = state.notifications.find(x => x.id === id);
+    if (n) { n.read = !n.read; save(); render(); }
+    break;
+  }
+  case 'notification-settings':
+    requestNotificationPermission();
+    break;
+  case 'export-data':
+    exportFile(`wisedayz-backup-${todayISO()}.json`, JSON.stringify(state, null, 2));
+    toast('Backup exported', 'success');
+    break;
+  case 'reset-data':
+    if (confirm('Reset workspace to sample data? Current local changes will be replaced.')) {
+      localStorage.removeItem(STORE);
+      state = defaultState();
+      save();
+      render();
+      toast('Sample workspace restored');
+    }
+    break;
+  case 'export-history':
+    exportCSV(
+      [['Time', 'Type', 'Title', 'Detail'], ...state.history.map(h => [new Date(h.at).toISOString(), h.type, h.title, h.detail || ''])],
+      `wisedayz-history-${todayISO()}.csv`
+    );
+    toast('History CSV exported', 'success');
+    break;
+  case 'export-report': {
+    const d = todayISO();
+    const dayTasks = state.tasks.filter(t => t.date === d);
+    exportCSV(
+      [['Title', 'Start', 'Duration (min)', 'Remaining (min)', 'Priority', 'Status'], ...dayTasks.map(t => [t.title, t.start, t.duration, t.remaining ?? t.duration, t.priority, t.status])],
+      `wisedayz-report-${d}.csv`
+    );
+    toast('Daily report CSV exported', 'success');
+    break;
+  }
+ }
 }
 document.addEventListener('click',e=>{
  const mode=e.target.closest('[data-account-mode]');if(mode){const register=mode.dataset.accountMode==='register';$('#account-name-wrap').hidden=!register;$('#account-submit').textContent=register?'Create account':'Sign in';$('#account-form').dataset.mode=register?'register':'login';$('#account-form').querySelector('[name=password]').setAttribute('autocomplete',register?'new-password':'current-password');return}
- const el=e.target.closest('[data-action]');if(el){e.preventDefault();if(['open-account'].includes(el.dataset.action)){showAccount();return}if(el.dataset.action==='close-account'&&e.target.closest('.account-panel')&&!e.target.matches('button'))return;handleAction(el,e)}
+ const el=e.target.closest('[data-action]');if(el){e.preventDefault();if(['open-account'].includes(el.dataset.action)){showAccount();return}if(el.dataset.action==='close-account'&&e.target.closest('.account-panel')&&!e.target.matches('button'))return;if(el.dataset.action==='backdrop-close'&&e.target!==el)return;handleAction(el,e)}
 });
 document.addEventListener('submit',async e=>{if(e.target.id!=='account-form')return;e.preventDefault();const form=e.target,fd=new FormData(form),mode=form.dataset.mode||'login',error=$('#account-error');error.textContent='';const submit=$('#account-submit');submit.disabled=true;submit.textContent='Please wait…';try{const body={email:fd.get('email'),password:fd.get('password')};if(mode==='register')body.name=fd.get('name');await finishAuth(mode==='register'?'/api/auth/register':'/api/auth/login',body)}catch(err){error.textContent=err.message}finally{if(submit.isConnected){submit.disabled=false;submit.textContent=mode==='register'?'Create account':'Sign in'}}});
-document.addEventListener('change',e=>{if(e.target.id==='selected-date'){selectedDate=e.target.value;render()}if(e.target.id==='focus-task')focusTaskId=e.target.value;if(e.target.id==='import-data'&&e.target.files[0]){const reader=new FileReader();reader.onload=()=>{try{const imported=JSON.parse(reader.result);validateBackup(imported);if(confirm(`Restore ${imported.tasks.length} tasks and ${imported.routines.length} routines? Current browser data will be replaced.`)){state=migrateImportedState(imported);save();render();toast('Backup validated and restored','success')}}catch(err){toast('Could not import this backup: '+err.message,'error')}};reader.readAsText(e.target.files[0])}});
+document.addEventListener('change',e=>{if(e.target.id==='selected-date'){selectedDate=e.target.value;render()}if(e.target.id==='insight-date'){insightDate=e.target.value;render()}if(e.target.id==='focus-task')focusTaskId=e.target.value;if(e.target.id==='import-data'&&e.target.files[0]){const reader=new FileReader();reader.onload=()=>{try{const imported=JSON.parse(reader.result);validateBackup(imported);if(confirm(`Restore ${imported.tasks.length} tasks and ${imported.routines.length} routines? Current browser data will be replaced.`)){state=migrateImportedState(imported);save();render();toast('Backup validated and restored','success')}}catch(err){toast('Could not import this backup: '+err.message,'error')}};reader.readAsText(e.target.files[0])}});
 document.addEventListener('input',e=>{if(e.target.id==='task-search'||e.target.id==='task-filter'||e.target.id==='task-sort'){const q=($('#task-search')?.value||'').toLowerCase(),filter=$('#task-filter')?.value||'all',sort=$('#task-sort')?.value||'date';let list=state.tasks.filter(t=>(t.title+' '+t.category).toLowerCase().includes(q)&&(filter==='all'||t.status===filter));list.sort((a,b)=>sort==='title'?a.title.localeCompare(b.title):sort==='priority'?({high:0,medium:1,low:2}[a.priority]-{high:0,medium:1,low:2}[b.priority]):a.date.localeCompare(b.date));$('#task-table-container').innerHTML=taskTable(list)}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='chat-input'){e.preventDefault();sendChat()}});
 $('#notification-button').addEventListener('click',()=>go('notifications'));$('#profile-shortcut').addEventListener('click',()=>go('profile'));
-updateBadges();render();validateSavedSession();scanTaskReminders();setInterval(scanTaskReminders,30000);
+$('#menu-toggle')?.addEventListener('click',()=>$('#sidebar')?.classList.toggle('open'));
+$('#quick-search')?.addEventListener('click',()=>{go('tasks');setTimeout(()=>$('#task-search')?.focus(),0)});
+applyTheme();updateBadges();render();validateSavedSession();scanTaskReminders();setInterval(scanTaskReminders,30000);
